@@ -1,0 +1,14 @@
+name: "Dharma-OS"
+version: "1.0.0"
+description: "AI Operations Head for Legal, Finance, and Social Management."
+tasks:
+  - id: "ops-audit"
+    difficulty: "medium"
+    description: "Optimize costs and fix compliance in 5 steps."
+actions:
+  - type: "LEGAL"
+    description: "Fixes compliance issues."
+  - type: "FINANCE"
+    description: "Cancels unused SaaS."
+  - type: "SOCIAL"
+    description: "Manages brand reputation."

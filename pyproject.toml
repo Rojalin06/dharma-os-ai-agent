@@ -1,0 +1,20 @@
+[project]
+name = "dharma-os"
+version = "1.0.0"
+description = "AI Operations Head for Legal, Finance, and Social Management."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "openenv-core",
+    "pydantic",
+    "openai",
+    "fastapi",
+    "uvicorn"
+]
+
+[project.scripts]
+server = "server.app:main"
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
