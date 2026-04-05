@@ -1,0 +1,4 @@
+openenv==0.1.0
+openai
+fastapi
+uvicorn
