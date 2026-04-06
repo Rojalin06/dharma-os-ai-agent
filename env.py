@@ -10,7 +10,7 @@ class DharmaEnv:
         self.legal_issues = ["GDPR Section A missing"]
         self.social_alerts = ["Unresolved customer complaint"]
         self.steps = 0
-        return self.get_state(),{}
+       return self.get_state(), {}
 
     def get_state(self):
         return Observation(
