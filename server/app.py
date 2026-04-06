@@ -11,9 +11,11 @@ def read_root():
 
 @app.post("/reset")
 def reset():
-    # Yeh automated checks ke liye bahut zaroori hai
+    try:
     obs, info = env.reset()
     return {"observation": obs, "info": info}
+except Exception as e:
+return {"error": str(e)}
 
 @app.post("/step")
 def step(action: dict):
