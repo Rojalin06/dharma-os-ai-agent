@@ -7,27 +7,26 @@ from models import Action
 
 async def main():
     try:
-        # STRICT REQUIREMENT: Scaler injects these specific variable names
-        # Make sure these are the ONLY ones used for the client
-        api_key = os.environ.get("API_KEY") 
+        # STRICT REQUIREMENT: Scaler proxy variables exactly as shown in screenshot
+        # Do not hardcode anything here
         base_url = os.environ.get("API_BASE_URL")
+        api_key = os.environ.get("API_KEY")
         model_name = os.environ.get("MODEL_NAME", "gpt-4o")
 
         if not api_key or not base_url:
-            print(f"[ERROR] Missing Env Vars: API_KEY={bool(api_key)}, URL={bool(base_url)}")
+            print("[ERROR] API_KEY or API_BASE_URL missing in environment")
             return
 
         # Initialize OpenAI client pointing to LiteLLM Proxy exactly as required
         client = OpenAI(
-            base_url=base_url, 
+            base_url=base_url,
             api_key=api_key
         )
 
         env = DharmaEnv()
-        tasks = ["task_1", "task_2", "task_3"] 
-        
         print("[START] Connected to Scaler Proxy")
 
+        tasks = ["task_1", "task_2", "task_3"] 
         for task_id in tasks:
             obs, info = env.reset(task_id=task_id) 
 
@@ -38,7 +37,6 @@ async def main():
                 response_format={ "type": "json_object" }
             )
             
-            # Response handling
             content = json.loads(response.choices[0].message.content)
             action = Action(
                 category=content.get("category", "FINANCE"),
