@@ -7,29 +7,29 @@ from models import Action
 
 async def main():
     try:
-        # STRICTLY as per Scaler Checklist/Video
-        # Use exact names: API_BASE_URL and API_KEY
-        base_url = os.environ.get("API_BASE_URL", "https://proxy.llm.scaler.com/v1")
-        api_key = os.environ.get("API_KEY") 
+        # STRICT REQUIREMENT: Scaler proxy variables exactly as shown in screenshot
+        base_url = os.environ.get("API_BASE_URL")
+        api_key = os.environ.get("API_KEY")
         model_name = os.environ.get("MODEL_NAME", "gpt-4o")
 
-        if not api_key:
-            print("[ERROR] API_KEY missing in environment")
+        if not api_key or not base_url:
+            print("[ERROR] Environment variables API_KEY or API_BASE_URL missing")
             return
 
-        # Initializing client via Proxy
+        # Initialize Client exactly as per Scaler instructions
         client = OpenAI(base_url=base_url, api_key=api_key)
         env = DharmaEnv()
 
         print("[START] Dharma-OS Initialized")
 
+        # Running 3 tasks as required for Phase 2
         tasks = ["task_1", "task_2", "task_3"]
         for task_id in tasks:
             obs, info = env.reset(task_id=task_id)
 
             response = client.chat.completions.create(
                 model=model_name,
-                messages=[{"role": "user", "content": f"Task: {task_id}. State: {obs}. Return JSON."}],
+                messages=[{"role": "user", "content": f"Analyze state: {obs}. Return JSON action."}],
                 response_format={"type": "json_object"}
             )
             
@@ -52,4 +52,4 @@ async def main():
         print(f"[ERROR] {e}")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main()) 
