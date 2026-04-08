@@ -7,64 +7,51 @@ from models import Action
 
 async def main():
     try:
-        # STRICT FIX: Hum wahi variables use karenge jo Scaler/Meta inject kar raha hai
-        # Unhone bataya hai: API_BASE_URL aur API_KEY
-        api_key = os.environ.get("API_KEY") 
-        base_url = os.environ.get("API_BASE_URL")
-        model_name = os.environ.get("MODEL_NAME", "gpt-4o") # default agar missing ho
+        # 1. Variables ko direct access karein
+        # Agar ye Hugging Face mein nahi milenge, toh code crash hoga aur humein pata chal jayega
+        api_key = os.environ["API_KEY"] 
+        base_url = os.environ["API_BASE_URL"]
+        model_name = os.environ.get("MODEL_NAME", "gpt-4o")
 
-        if not api_key or not base_url:
-            print("[ERROR] Missing Scaler Environment Variables (API_KEY or API_BASE_URL)")
-            return
+        # 2. Print karke verify karein (Sirf debugging ke liye, key print mat karna)
+        print(f"[DEBUG] Using Base URL: {base_url}")
 
-        # Initialize OpenAI client with THEIR proxy
         client = OpenAI(
             base_url=base_url, 
             api_key=api_key
         )
 
         env = DharmaEnv()
+        # Ensure teeno tasks register ho rahe hain
         tasks = ["task_1", "task_2", "task_3"] 
         
-        print(f"[START] Dharma-OS Initialized via Proxy")
-
         for task_id in tasks:
-            print(f"\n--- Processing {task_id} ---")
             obs, info = env.reset(task_id=task_id) 
 
-            try:
-                # API call through proxy
-                response = client.chat.completions.create(
-                    model=model_name,
-                    messages=[{
-                        "role": "user", 
-                        "content": f"Task: {task_id}. State: {obs}. Return ONLY JSON with category, command, target_id."
-                    }],
-                    response_format={ "type": "json_object" }
-                )
-                
-                raw_content = response.choices[0].message.content
-                data = json.loads(raw_content)
-                
-                action = Action(
-                    category=data.get("category", "FINANCE"),
-                    command=data.get("command", "CANCEL_SUBSCRIPTION"),
-                    target_id=data.get("target_id", "Unknown")
-                )
+            # LLM API Call
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=[{"role": "user", "content": f"Task: {task_id}. State: {obs}. Return JSON action."}],
+                response_format={ "type": "json_object" }
+            )
+            
+            content = json.loads(response.choices[0].message.content)
+            action = Action(
+                category=content.get("category", "FINANCE"),
+                command=content.get("command", "CANCEL_SUBSCRIPTION"),
+                target_id=content.get("target_id", "Unknown")
+            )
 
-                obs, reward, done, info = await env.step(action)
-                
-                # Reward adjustment logic (strictly between 0 and 1)
-                final_reward = 0.95 if reward >= 1.0 else (0.05 if reward <= 0.0 else reward)
-                print(f"[SUCCESS] Task: {task_id} | Final Score: {final_reward}")
+            obs, reward, done, info = await env.step(action)
+            
+            # Score Adjustment
+            final_reward = 0.95 if reward >= 1.0 else (0.05 if reward <= 0.0 else reward)
+            print(f"Task: {task_id} | Score: {final_reward}")
 
-            except Exception as task_err:
-                print(f"[TASK ERROR] {task_id}: {task_err}")
-                continue 
-
+    except KeyError as e:
+        print(f"[CRITICAL] Variable Missing in Hugging Face: {e}")
     except Exception as e:
-        print(f"[CRITICAL ERROR] {str(e)}")
-        return 
+        print(f"[ERROR] {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())
