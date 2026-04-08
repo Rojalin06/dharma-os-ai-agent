@@ -7,31 +7,29 @@ from models import Action
 
 async def main():
     try:
-        # Step 1: Environment variables ko Scaler format mein uthana
-        # Default value wahi proxy URL hona chahiye
-        base_url = os.getenv("API_BASE_URL", "https://proxy.llm.scaler.com/v1")
-        api_key = os.getenv("HF_TOKEN") # Scaler checks this variable
-        model_name = os.getenv("MODEL_NAME", "gpt-4o")
+        # STRICTLY as per Scaler Checklist/Video
+        # Use exact names: API_BASE_URL and API_KEY
+        base_url = os.environ.get("API_BASE_URL", "https://proxy.llm.scaler.com/v1")
+        api_key = os.environ.get("API_KEY") 
+        model_name = os.environ.get("MODEL_NAME", "gpt-4o")
 
         if not api_key:
-            print("[ERROR] HF_TOKEN is missing!")
+            print("[ERROR] API_KEY missing in environment")
             return
 
-        # Step 2: Client initialization specifically via proxy
+        # Initializing client via Proxy
         client = OpenAI(base_url=base_url, api_key=api_key)
         env = DharmaEnv()
 
         print("[START] Dharma-OS Initialized")
 
-        # Step 3: Tasks Execution
         tasks = ["task_1", "task_2", "task_3"]
         for task_id in tasks:
             obs, info = env.reset(task_id=task_id)
 
-            # LLM Call
             response = client.chat.completions.create(
                 model=model_name,
-                messages=[{"role": "user", "content": f"Analyze state: {obs} for task {task_id}. Respond in JSON."}],
+                messages=[{"role": "user", "content": f"Task: {task_id}. State: {obs}. Return JSON."}],
                 response_format={"type": "json_object"}
             )
             
@@ -44,9 +42,9 @@ async def main():
 
             obs, reward, done, info = await env.step(action)
             
-            # Score scaling between 0.1 and 0.9
-            final_reward = max(0.1, min(0.9, float(reward)))
-            print(f"[STEP] Task: {task_id} | Reward: {final_reward}")
+            # Score strictly between 0 and 1
+            final_reward = 0.95 if reward >= 1.0 else (0.05 if reward <= 0.0 else reward)
+            print(f"[STEP] Task: {task_id} | Action: {action.command} | Reward: {final_reward}")
 
         print(f"[END] Final Score: {final_reward}")
 
