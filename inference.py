@@ -9,7 +9,7 @@ async def main():
 
     # Example Action: Finance Audit
     action = Action(category="FINANCE", command="CANCEL_SUBSCRIPTION", target_id="Adobe")
-    obs, reward, done, _ = await env.step(action)
+    obs, reward, done, info = await env.step(action)
     
     print(f"[STEP 1] Action: Cancel Adobe | Reward: {reward}")
     print(f"[END] Final Score: {obs.reward_score if hasattr(obs, 'reward_score') else reward}")
