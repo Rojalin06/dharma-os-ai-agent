@@ -4,7 +4,7 @@ from models import Action
 
 async def main():
     env = DharmaEnv()
-    obs = env.reset()
+    obs, info = env.reset()
     print(f"[START] Dharma-OS Initialized. Compliance: {obs.compliance_score}")
 
     # Example Action: Finance Audit
