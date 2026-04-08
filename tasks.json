@@ -1,0 +1,20 @@
+[
+  {
+    "task_id": "task_1",
+    "category": "FINANCE",
+    "goal": "Cancel Adobe subscription and verify reward is between 0 and 1",
+    "grader_type": "binary"
+  },
+  {
+    "task_id": "task_2",
+    "category": "COMMUNICATION",
+    "goal": "Check unread emails and return status",
+    "grader_type": "binary"
+  },
+  {
+    "task_id": "task_3",
+    "category": "PRODUCTIVITY",
+    "goal": "List meetings and ensure score range is valid",
+    "grader_type": "binary"
+  }
+]
