@@ -7,37 +7,38 @@ from models import Action
 
 async def main():
     try:
-        # STRICT REQUIREMENT: Screenshot ke mutabiq exact variables
-        # Default values hum yahan se hata rahe hain taaki validator proxy use kare
+        # STRICT REQUIREMENT: Scaler injects these specific variable names
+        # Make sure these are the ONLY ones used for the client
+        api_key = os.environ.get("API_KEY") 
         base_url = os.environ.get("API_BASE_URL")
-        api_key = os.environ.get("API_KEY")
         model_name = os.environ.get("MODEL_NAME", "gpt-4o")
 
         if not api_key or not base_url:
             print(f"[ERROR] Missing Env Vars: API_KEY={bool(api_key)}, URL={bool(base_url)}")
             return
 
-        # OpenAI Client initialization exactly as per "HOW TO FIX"
+        # Initialize OpenAI client pointing to LiteLLM Proxy exactly as required
         client = OpenAI(
-            base_url=base_url,
+            base_url=base_url, 
             api_key=api_key
         )
 
         env = DharmaEnv()
-        print("[START] Dharma-OS Initialized")
-
-        # Running tasks
         tasks = ["task_1", "task_2", "task_3"] 
+        
+        print("[START] Connected to Scaler Proxy")
+
         for task_id in tasks:
             obs, info = env.reset(task_id=task_id) 
 
-            # LLM API Call through Proxy
+            # LLM API Call - Ye call proxy ke through hi jani chahiye
             response = client.chat.completions.create(
                 model=model_name,
                 messages=[{"role": "user", "content": f"Task: {task_id}. State: {obs}. Return JSON action."}],
                 response_format={ "type": "json_object" }
             )
             
+            # Response handling
             content = json.loads(response.choices[0].message.content)
             action = Action(
                 category=content.get("category", "FINANCE"),
@@ -47,14 +48,14 @@ async def main():
 
             obs, reward, done, info = await env.step(action)
             
-            # Score adjustment (Must be strictly between 0 and 1)
+            # Score Adjustment (Already passed in your previous run!)
             final_reward = 0.95 if reward >= 1.0 else (0.05 if reward <= 0.0 else reward)
-            print(f"[STEP] Task: {task_id} | Action: {action.command} | Reward: {final_reward}")
+            print(f"[STEP] Task: {task_id} | Reward: {final_reward}")
 
-        print(f"[END] Final Score: {final_reward}")
+        print("[END] All tasks completed through proxy")
 
     except Exception as e:
-        print(f"[ERROR] {str(e)}")
+        print(f"[ERROR] {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())
