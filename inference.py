@@ -2,66 +2,59 @@ import asyncio
 import os
 import json
 from openai import OpenAI
-from env import DharmaEnv  # Ensure this matches your project structure
+from env import DharmaEnv
 from models import Action
-
-# 1. Mandatory Environment Variables (As per Tutorial 04)
-API_BASE_URL = os.getenv("API_BASE_URL", "https://proxy.llm.scaler.com/v1")
-MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o")
-# Scaler looks for HF_TOKEN to identify the participant
-API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
 
 async def main():
     try:
-        if not API_KEY:
-            print("[ERROR] HF_TOKEN missing. Please add it to HF Secrets.")
-            return
+        # MANDATORY: Screenshot ke "HOW TO FIX" step 2 ke mutabiq exact initialization
+        # Hum direct os.environ use kar rahe hain jaisa Scaler ne manga hai
+        client = OpenAI(
+            base_url=os.environ["API_BASE_URL"],
+            api_key=os.environ["API_KEY"]
+        )
+        
+        # MODEL_NAME ko variable se uthayein
+        model_name = os.environ.get("MODEL_NAME", "gpt-4o")
 
-        # 2. Initialize OpenAI Client pointing to Proxy
-        client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
         env = DharmaEnv()
-
-        # 3. Task Execution Loop
+        
+        # MANDATORY LOGGING FORMAT
         tasks = ["task_1", "task_2", "task_3"] 
         
         for task_id in tasks:
-            # [START] line is mandatory for validator
-            print(f"[START] task={task_id} env=dharma_os model={MODEL_NAME}", flush=True)
+            # [START] line mandatory format
+            print(f"[START] task={task_id} env=dharma_os model={model_name}", flush=True)
             
             obs, info = env.reset(task_id=task_id)
-            rewards = []
             
-            # Step 1: LLM Logic
+            # LLM API Call through Proxy
             response = client.chat.completions.create(
-                model=MODEL_NAME,
-                messages=[{"role": "system", "content": "You are a helpful OS assistant. Respond in JSON."},
-                          {"role": "user", "content": f"Task: {task_id}. Observation: {obs}"}],
+                model=model_name,
+                messages=[{"role": "user", "content": f"Task: {task_id}. State: {obs}. Return JSON."}],
                 response_format={ "type": "json_object" }
             )
             
-            data = json.loads(response.choices[0].message.content)
+            content = json.loads(response.choices[0].message.content)
             action = Action(
-                category=data.get("category", "FINANCE"),
-                command=data.get("command", "CANCEL_SUBSCRIPTION"),
-                target_id=data.get("target_id", "Unknown")
+                category=content.get("category", "FINANCE"),
+                command=content.get("command", "CANCEL_SUBSCRIPTION"),
+                target_id=content.get("target_id", "Unknown")
             )
 
-            # Step 2: Environment Interaction
             obs, reward, done, info = await env.step(action)
-            rewards.append(reward)
             
-            # [STEP] line is mandatory immediately after env.step()
-            # Format: reward must be 2 decimal places
+            # [STEP] line mandatory format immediately after step
+            # Reward must be 0.0-1.0 range
             print(f"[STEP] step=1 action={action.command} reward={reward:.2f} done={str(done).lower()} error=null", flush=True)
             
-            # [END] line is mandatory after task completion
-            avg_score = sum(rewards) / len(rewards)
-            rewards_str = ",".join([f"{r:.2f}" for r in rewards])
-            print(f"[END] success={str(done).lower()} steps=1 score={avg_score:.3f} rewards={rewards_str}", flush=True)
+            # [END] line mandatory format
+            print(f"[END] success={str(done).lower()} steps=1 score={reward:.3f} rewards={reward:.2f}", flush=True)
 
+    except KeyError as e:
+        print(f"[ERROR] Missing Variable: {e}. Check HuggingFace Secrets.")
     except Exception as e:
-        # END log even on exception to avoid validator hang
-        print(f"[END] success=false steps=0 score=0.000 rewards=0.00 error={str(e)}", flush=True)
+        print(f"[ERROR] {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())
