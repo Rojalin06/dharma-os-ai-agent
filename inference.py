@@ -2,24 +2,24 @@ import asyncio
 import os
 import json
 from openai import OpenAI
-from env import DharmaEnv
+from env import DharmaEnv  # Ensure this matches your project structure
 from models import Action
 
 async def main():
     try:
-        # MANDATORY: Screenshot ke "HOW TO FIX" step 2 ke mutabiq exact initialization
-        # Hum direct os.environ use kar rahe hain jaisa Scaler ne manga hai
+        # STRICT REQUIREMENT: Screenshot ke "HOW TO FIX" step 2 ke mutabiq exact code
+        # os.environ[] use karne se validator ko 100% confirmation milti hai
         client = OpenAI(
             base_url=os.environ["API_BASE_URL"],
             api_key=os.environ["API_KEY"]
         )
         
-        # MODEL_NAME ko variable se uthayein
+        # MODEL_NAME variable se uthayein
         model_name = os.environ.get("MODEL_NAME", "gpt-4o")
 
         env = DharmaEnv()
         
-        # MANDATORY LOGGING FORMAT
+        # REQUIRED LOGGING FORMAT FOR PHASE 2
         tasks = ["task_1", "task_2", "task_3"] 
         
         for task_id in tasks:
@@ -29,9 +29,10 @@ async def main():
             obs, info = env.reset(task_id=task_id)
             
             # LLM API Call through Proxy
+            # Ensure the call is made using the proxy-configured client
             response = client.chat.completions.create(
                 model=model_name,
-                messages=[{"role": "user", "content": f"Task: {task_id}. State: {obs}. Return JSON."}],
+                messages=[{"role": "user", "content": f"Analyze state: {obs}. Task: {task_id}. Return JSON action."}],
                 response_format={ "type": "json_object" }
             )
             
@@ -42,19 +43,20 @@ async def main():
                 target_id=content.get("target_id", "Unknown")
             )
 
+            # Execution
             obs, reward, done, info = await env.step(action)
             
-            # [STEP] line mandatory format immediately after step
-            # Reward must be 0.0-1.0 range
+            # [STEP] line mandatory format (reward format: 0.00)
             print(f"[STEP] step=1 action={action.command} reward={reward:.2f} done={str(done).lower()} error=null", flush=True)
             
             # [END] line mandatory format
             print(f"[END] success={str(done).lower()} steps=1 score={reward:.3f} rewards={reward:.2f}", flush=True)
 
     except KeyError as e:
-        print(f"[ERROR] Missing Variable: {e}. Check HuggingFace Secrets.")
+        # Agar variable nahi mila toh yahan print hoga
+        print(f"[CRITICAL ERROR] Missing Environment Variable: {e}", flush=True)
     except Exception as e:
-        print(f"[ERROR] {e}")
+        print(f"[ERROR] {e}", flush=True)
 
 if __name__ == "__main__":
     asyncio.run(main())
