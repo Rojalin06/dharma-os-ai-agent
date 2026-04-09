@@ -2,61 +2,61 @@ import asyncio
 import os
 import json
 from openai import OpenAI
-from env import DharmaEnv  # Ensure this matches your project structure
+from env import DharmaEnv
 from models import Action
+
+# STRICT MANDATORY CONFIGURATION
+# Scaler injects these names. Do NOT use default strings here.
+API_BASE_URL = os.getenv("API_BASE_URL")
+MODEL_NAME = os.getenv("MODEL_NAME")
+# Use exact name check for the key
+API_KEY = os.getenv("API_KEY") or os.getenv("HF_TOKEN")
 
 async def main():
     try:
-        # STRICT REQUIREMENT: Screenshot ke "HOW TO FIX" step 2 ke mutabiq exact code
-        # os.environ[] use karne se validator ko 100% confirmation milti hai
+        # Step 1: Client initialization strictly via proxy
+        if not API_KEY or not API_BASE_URL:
+            print(f"[ERROR] Environment variables missing: URL={bool(API_BASE_URL)}, KEY={bool(API_KEY)}")
+            return
+
         client = OpenAI(
-            base_url=os.environ["API_BASE_URL"],
-            api_key=os.environ["API_KEY"]
+            base_url=API_BASE_URL,
+            api_key=API_KEY
         )
-        
-        # MODEL_NAME variable se uthayein
-        model_name = os.environ.get("MODEL_NAME", "gpt-4o")
 
         env = DharmaEnv()
         
-        # REQUIRED LOGGING FORMAT FOR PHASE 2
-        tasks = ["task_1", "task_2", "task_3"] 
-        
+        # Mandatory Start Log
+        print(f"[START] task=task_1 env=dharma_os model={MODEL_NAME}", flush=True)
+
+        # Step 2: Running the tasks
+        tasks = ["task_1", "task_2", "task_3"]
         for task_id in tasks:
-            # [START] line mandatory format
-            print(f"[START] task={task_id} env=dharma_os model={model_name}", flush=True)
-            
             obs, info = env.reset(task_id=task_id)
             
-            # LLM API Call through Proxy
-            # Ensure the call is made using the proxy-configured client
+            # This is the call that MUST go through the proxy
             response = client.chat.completions.create(
-                model=model_name,
-                messages=[{"role": "user", "content": f"Analyze state: {obs}. Task: {task_id}. Return JSON action."}],
+                model=MODEL_NAME,
+                messages=[{"role": "user", "content": f"Task: {task_id}. State: {obs}. Respond in JSON."}],
                 response_format={ "type": "json_object" }
             )
             
-            content = json.loads(response.choices[0].message.content)
+            data = json.loads(response.choices[0].message.content)
             action = Action(
-                category=content.get("category", "FINANCE"),
-                command=content.get("command", "CANCEL_SUBSCRIPTION"),
-                target_id=content.get("target_id", "Unknown")
+                category=data.get("category", "FINANCE"),
+                command=data.get("command", "CANCEL_SUBSCRIPTION"),
+                target_id=data.get("target_id", "Unknown")
             )
 
-            # Execution
             obs, reward, done, info = await env.step(action)
             
-            # [STEP] line mandatory format (reward format: 0.00)
+            # Step 3: Strict Output Format
             print(f"[STEP] step=1 action={action.command} reward={reward:.2f} done={str(done).lower()} error=null", flush=True)
-            
-            # [END] line mandatory format
             print(f"[END] success={str(done).lower()} steps=1 score={reward:.3f} rewards={reward:.2f}", flush=True)
 
-    except KeyError as e:
-        # Agar variable nahi mila toh yahan print hoga
-        print(f"[CRITICAL ERROR] Missing Environment Variable: {e}", flush=True)
     except Exception as e:
-        print(f"[ERROR] {e}", flush=True)
+        # Printing error helps debug if something crashes
+        print(f"[ERROR] {str(e)}", flush=True)
 
 if __name__ == "__main__":
     asyncio.run(main())
