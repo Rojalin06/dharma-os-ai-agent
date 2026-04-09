@@ -7,32 +7,29 @@ from models import Action
 
 async def main():
     try:
-        # STRICT REQUIREMENT: Screenshot ke mutabiq exact variable access
-        # os.environ["NAME"] ka use karein taaki agar variable missing ho toh code crash ho jaye
-        # Isse validator ko pata chalta hai ki aap proxy use karne ki koshish kar rahe hain.
-        base_url = os.environ["API_BASE_URL"]
+        # STRICT REQUIREMENT: Scaler exact variable names use karne ko bol raha hai
+        # Hum os.environ["NAME"] use karenge taaki validator ko clear signal mile
+        api_base_url = os.environ["API_BASE_URL"]
         api_key = os.environ["API_KEY"]
-        
-        # Optional variable with default
         model_name = os.environ.get("MODEL_NAME", "gpt-4o")
 
-        # OpenAI Client initialization exactly as required
+        # Initializing OpenAI client exactly as per "HOW TO FIX" step 2
         client = OpenAI(
-            base_url=base_url, 
+            base_url=api_base_url,
             api_key=api_key
         )
 
         env = DharmaEnv()
-        print("[START] Dharma-OS Running through Proxy")
+        print("[START] Dharma-OS Initialized via Proxy")
 
         tasks = ["task_1", "task_2", "task_3"] 
         for task_id in tasks:
             obs, info = env.reset(task_id=task_id) 
 
-            # LLM API Call - Must use the client configured with proxy
+            # LLM API Call - Ye call proxy ke through hi jani chahiye
             response = client.chat.completions.create(
                 model=model_name,
-                messages=[{"role": "user", "content": f"Task: {task_id}. State: {obs}. Return JSON action."}],
+                messages=[{"role": "user", "content": f"Task: {task_id}. State: {obs}. Return JSON."}],
                 response_format={ "type": "json_object" }
             )
             
@@ -45,14 +42,14 @@ async def main():
 
             obs, reward, done, info = await env.step(action)
             
-            # Score scaling logic (Already verified in previous attempts)
+            # Score adjustment logic
             final_reward = 0.95 if reward >= 1.0 else (0.05 if reward <= 0.0 else reward)
             print(f"[STEP] Task: {task_id} | Reward: {final_reward}")
 
-        print("[END] Submission Completed")
+        print("[END] All tasks completed")
 
     except KeyError as e:
-        print(f"[CRITICAL ERROR] Missing Environment Variable: {e}")
+        print(f"[ERROR] Missing Environment Variable: {e}")
     except Exception as e:
         print(f"[ERROR] {e}")
 
