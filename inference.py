@@ -1,34 +1,49 @@
 import asyncio
 import os
 import json
+import textwrap
 from openai import OpenAI
 from env import DharmaEnv
 from models import Action
 
+# Mandatory variables as per sample script
+API_BASE_URL = os.getenv("API_BASE_URL", "https://proxy.llm.scaler.com/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o")
+# Try both names to be safe
+API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
+
+# Logging Functions (Strictly required format)
+def log_start(task, env_name, model):
+    print(f"[START] task={task} env={env_name} model={model}", flush=True)
+
+def log_step(step, action, reward, done, error=None):
+    error_val = error if error else "null"
+    done_val = str(done).lower()
+    print(f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error_val}", flush=True)
+
+def log_end(success, steps, score, rewards):
+    rewards_str = ",".join([f"{r:.2f}" for r in rewards])
+    print(f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}", flush=True)
+
 async def main():
     try:
-        # STRICT REQUIREMENT: Scaler exact variable names use karne ko bol raha hai
-        # Hum os.environ["NAME"] use karenge taaki validator ko clear signal mile
-        api_base_url = os.environ["API_BASE_URL"]
-        api_key = os.environ["API_KEY"]
-        model_name = os.environ.get("MODEL_NAME", "gpt-4o")
+        if not API_KEY:
+            print("[ERROR] API_KEY/HF_TOKEN missing")
+            return
 
-        # Initializing OpenAI client exactly as per "HOW TO FIX" step 2
-        client = OpenAI(
-            base_url=api_base_url,
-            api_key=api_key
-        )
-
+        client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
         env = DharmaEnv()
-        print("[START] Dharma-OS Initialized via Proxy")
-
         tasks = ["task_1", "task_2", "task_3"] 
-        for task_id in tasks:
-            obs, info = env.reset(task_id=task_id) 
 
-            # LLM API Call - Ye call proxy ke through hi jani chahiye
+        for task_id in tasks:
+            log_start(task_id, "dharma_os", MODEL_NAME) #
+            
+            obs, info = env.reset(task_id=task_id)
+            rewards = []
+            
+            # Phase 2 usually checks a single step or loop
             response = client.chat.completions.create(
-                model=model_name,
+                model=MODEL_NAME,
                 messages=[{"role": "user", "content": f"Task: {task_id}. State: {obs}. Return JSON."}],
                 response_format={ "type": "json_object" }
             )
@@ -41,17 +56,16 @@ async def main():
             )
 
             obs, reward, done, info = await env.step(action)
+            rewards.append(reward)
             
-            # Score adjustment logic
-            final_reward = 0.95 if reward >= 1.0 else (0.05 if reward <= 0.0 else reward)
-            print(f"[STEP] Task: {task_id} | Reward: {final_reward}")
+            # Log each step precisely
+            log_step(1, action.command, reward, done)
+            
+            # Log the end of task
+            log_end(done, 1, reward, rewards)
 
-        print("[END] All tasks completed")
-
-    except KeyError as e:
-        print(f"[ERROR] Missing Environment Variable: {e}")
     except Exception as e:
-        print(f"[ERROR] {e}")
+        print(f"[DEBUG] Error: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())
