@@ -5,53 +5,51 @@ from openai import OpenAI
 from env import DharmaEnv
 from models import Action
 
+# 1. Variables exactly as requested in "How to Fix"
+# Direct os.environ use karein taaki validator ko clear signal mile
+API_BASE_URL = os.environ["API_BASE_URL"]
+API_KEY = os.environ["API_KEY"]
+MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o")
+
 async def main():
     try:
-        # 1. INITIALIZATION: Exactly as per "HOW TO FIX" Step 2
-        # Using direct environ access to satisfy the validator's check
+        # 2. Initialize OpenAI client pointing to the proxy
         client = OpenAI(
-            base_url=os.environ["API_BASE_URL"],
-            api_key=os.environ["API_KEY"]
+            base_url=API_BASE_URL,
+            api_key=API_KEY
         )
-        
-        # Model name from environment
-        model_name = os.environ.get("MODEL_NAME", "gpt-4o")
 
         env = DharmaEnv()
-        
-        # REQUIRED LOGGING FORMAT: [START], [STEP], [END]
         tasks = ["task_1", "task_2", "task_3"] 
         
         for task_id in tasks:
-            # Mandatory [START] line
-            print(f"[START] task={task_id} env=dharma_os model={model_name}", flush=True)
+            # MANDATORY LOGGING FORMAT
+            print(f"[START] task={task_id} env=dharma_os model={MODEL_NAME}", flush=True)
             
             obs, info = env.reset(task_id=task_id)
             
-            # API Call - Must use the 'client' configured with proxy
+            # API Call that MUST hit the LiteLLM proxy
             response = client.chat.completions.create(
-                model=model_name,
-                messages=[{"role": "user", "content": f"Analyze state: {obs}. Return JSON."}],
+                model=MODEL_NAME,
+                messages=[{"role": "user", "content": f"Analyze: {obs}"}],
                 response_format={ "type": "json_object" }
             )
             
-            data = json.loads(response.choices[0].message.content)
+            content = json.loads(response.choices[0].message.content)
             action = Action(
-                category=data.get("category", "FINANCE"),
-                command=data.get("command", "CANCEL_SUBSCRIPTION"),
-                target_id=data.get("target_id", "Unknown")
+                category=content.get("category", "FINANCE"),
+                command=content.get("command", "CANCEL_SUBSCRIPTION"),
+                target_id=content.get("target_id", "Unknown")
             )
 
             obs, reward, done, info = await env.step(action)
             
-            # Mandatory [STEP] line (format: 2 decimal places)
+            # [STEP] line mandatory format (reward as 2 decimal places)
             print(f"[STEP] step=1 action={action.command} reward={reward:.2f} done={str(done).lower()} error=null", flush=True)
             
-            # Mandatory [END] line
+            # [END] line mandatory format
             print(f"[END] success={str(done).lower()} steps=1 score={reward:.3f} rewards={reward:.2f}", flush=True)
 
-    except KeyError as e:
-        print(f"[CRITICAL ERROR] Missing variable: {e}. Check HF Secrets.", flush=True)
     except Exception as e:
         print(f"[ERROR] {str(e)}", flush=True)
 
