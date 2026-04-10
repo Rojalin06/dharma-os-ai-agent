@@ -7,6 +7,7 @@ class DharmaEnv:
 
     def reset(self, task_id=None):
         self.task_id = task_id
+        # Issues initialized
         self.subscriptions = {"Slack": 15.0, "Adobe": 50.0, "Zoom": 20.0}
         self.legal_issues = ["GDPR Section A missing"]
         self.social_alerts = ["Unresolved customer complaint"]
@@ -23,23 +24,21 @@ class DharmaEnv:
 
     async def step(self, action: Action):
         self.steps += 1
-        reward = 0.0
+        reward = 0.01 # Baseline small reward
 
         if action.category == "LEGAL" and self.legal_issues:
             self.legal_issues.pop()
-            reward += 0.5
+            reward = 0.45
         elif action.category == "FINANCE" and action.target_id in self.subscriptions:
             del self.subscriptions[action.target_id]
-            reward += 0.3
+            reward = 0.25
         elif action.category == "SOCIAL" and self.social_alerts:
             self.social_alerts.pop()
-            reward += 0.2
-        else:
-            reward = 0.05  # ✅ Koi match nahi toh bhi 0.0 nahi
+            reward = 0.15
 
         done = self.steps >= 5 or (not self.legal_issues and not self.social_alerts)
-
-        # ✅ Score strictly (0.0, 1.0) ke beech — 0.0 aur 1.0 allowed nahi
+        
+        # Strictly between 0 and 1
         reward = max(0.01, min(reward, 0.99))
 
         return self.get_state(), reward, done, {}
