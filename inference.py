@@ -5,59 +5,59 @@ from openai import OpenAI
 from env import DharmaEnv
 from models import Action
 
+# 1. Mandatory Variables - Directly as per Scaler Checklist
+# Make sure your HF Secret name is 'API_KEY'
+API_BASE_URL = os.getenv("API_BASE_URL", "https://proxy.llm.scaler.com/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o")
+API_KEY = os.getenv("API_KEY") # Prioritize this as per 'How to Fix' instructions
+
 async def main():
     try:
-        # MANDATORY: Scaler environment variables
-        # Inhe directly client mein pass karna zaroori hai
-        api_base = os.environ.get("API_BASE_URL")
-        # Scaler portal says use API_KEY
-        api_key = os.environ.get("API_KEY") or os.environ.get("HF_TOKEN")
-        model_name = os.environ.get("MODEL_NAME", "gpt-4o")
-
-        if not api_key or not api_base:
-            print("[ERROR] Environment variables are missing!", flush=True)
+        if not API_KEY or not API_BASE_URL:
+            print("[ERROR] Mandatory environment variables missing!")
             return
 
-        # Initialize OpenAI Client pointing strictly to LiteLLM Proxy
-        client = OpenAI(
-            base_url=api_base, 
-            api_key=api_key
-        )
-
+        # 2. Client Initialization exactly as per instruction Step 2
+        client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
         env = DharmaEnv()
-        
-        # REQUIRED LOGGING FORMAT: [START], [STEP], [END]
+
         tasks = ["task_1", "task_2", "task_3"] 
-        
         for task_id in tasks:
-            print(f"[START] task={task_id} env=dharma_os model={model_name}", flush=True)
+            # REQUIRED: [START] line format
+            print(f"[START] task={task_id} env=dharma_os model={MODEL_NAME}", flush=True)
             
             obs, info = env.reset(task_id=task_id)
+            rewards = []
             
-            # API Call - Iska track LiteLLM rakhta hai
+            # API Call that MUST go through proxy
             response = client.chat.completions.create(
-                model=model_name,
-                messages=[{"role": "user", "content": f"Task: {task_id}. State: {obs}."}],
+                model=MODEL_NAME,
+                messages=[{"role": "user", "content": f"Task: {task_id}. Observation: {obs}"}],
                 response_format={ "type": "json_object" }
             )
             
-            content = json.loads(response.choices[0].message.content)
+            data = json.loads(response.choices[0].message.content)
             action = Action(
-                category=content.get("category", "FINANCE"),
-                command=content.get("command", "CANCEL_SUBSCRIPTION"),
-                target_id=content.get("target_id", "Unknown")
+                category=data.get("category", "FINANCE"),
+                command=data.get("command", "CANCEL_SUBSCRIPTION"),
+                target_id=data.get("target_id", "Unknown")
             )
 
             obs, reward, done, info = await env.step(action)
+            rewards.append(reward)
             
-            # [STEP] log is mandatory after each step
+            # REQUIRED: [STEP] line format - EXACT FIELD NAMES
+            # reward must be formatted to 2 decimal places
+            # done must be lowercase true/false
             print(f"[STEP] step=1 action={action.command} reward={reward:.2f} done={str(done).lower()} error=null", flush=True)
             
-            # [END] log is mandatory after each task
-            print(f"[END] success={str(done).lower()} steps=1 score={reward:.3f} rewards={reward:.2f}", flush=True)
+            # REQUIRED: [END] line format
+            avg_reward = sum(rewards) / len(rewards)
+            print(f"[END] success={str(done).lower()} steps=1 score={avg_reward:.3f} rewards={reward:.2f}", flush=True)
 
     except Exception as e:
-        print(f"[ERROR] {str(e)}", flush=True)
+        # Avoid crashing so validator can see the log
+        print(f"[END] success=false steps=0 score=0.000 rewards=0.00 error={str(e)}", flush=True)
 
 if __name__ == "__main__":
     asyncio.run(main())
