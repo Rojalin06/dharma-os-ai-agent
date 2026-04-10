@@ -6,7 +6,7 @@ from env import DharmaEnv
 from models import Action
 
 async def run_task(client, env, task_id, model_name):
-    # START line is fine
+    # START line format is fixed
     print(f"[START] task={task_id} env=dharma_os model={model_name}", flush=True)
     
     obs, info = env.reset(task_id=task_id)
@@ -15,9 +15,7 @@ async def run_task(client, env, task_id, model_name):
     reward_list = []
 
     while not done and step_count < 10:
-        prompt = f"""You are an AI managing DharmaOS. 
-State: Compliance={obs.compliance_score}, Subs={obs.active_subscriptions}, Sentiment={obs.social_sentiment}.
-Return ONLY JSON: {{"category": "LEGAL/FINANCE/SOCIAL", "command": "STR", "target_id": "STR"}}"""
+        prompt = f"Manage DharmaOS. State: Compliance={obs.compliance_score}, Subs={obs.active_subscriptions}. Reply in JSON format."
 
         response = await client.chat.completions.create(
             model=model_name,
@@ -39,14 +37,14 @@ Return ONLY JSON: {{"category": "LEGAL/FINANCE/SOCIAL", "command": "STR", "targe
         # [STEP] line must be exact
         print(f"[STEP] step={step_count} action={action.command} reward={reward:.2f} done={str(done).lower()} error=null", flush=True)
 
-    # Calculate final score (Average) and clamp strictly between 0.01 and 0.99
-    avg_reward = sum(reward_list) / len(reward_list) if reward_list else 0.01
-    final_score = max(0.01, min(avg_reward, 0.99))
+    # Calculate final score and ensure it is strictly within (0, 1)
+    final_score = sum(reward_list) / len(reward_list) if reward_list else 0.01
+    final_score = max(0.01, min(final_score, 0.99))
     
-    # Format rewards as comma-separated string (e.g., "0.45,0.25")
+    # Format rewards as a comma-separated list
     rewards_str = ",".join([f"{r:.2f}" for r in reward_list])
 
-    # CRITICAL: Removed "task={task_id}" from [END] line to match validator regex
+    # CRITICAL: Removed "task={task_id}" to match validator requirements
     print(f"[END] success={str(done).lower()} steps={step_count} score={final_score:.3f} rewards={rewards_str}", flush=True)
     
     return final_score
@@ -60,6 +58,7 @@ async def main():
         client = AsyncOpenAI(base_url=api_base, api_key=api_key)
         env = DharmaEnv()
 
+        # Run at least 3 tasks as required
         for task_id in ["task_1", "task_2", "task_3"]:
             await run_task(client, env, task_id, model_name)
 
