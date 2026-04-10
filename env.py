@@ -24,7 +24,7 @@ class DharmaEnv:
 
     async def step(self, action: Action):
         self.steps += 1
-        reward = 0.01 # Baseline small reward
+        reward = 0.05 # Baseline reward for taking an action
 
         if action.category == "LEGAL" and self.legal_issues:
             self.legal_issues.pop()
@@ -38,7 +38,7 @@ class DharmaEnv:
 
         done = self.steps >= 5 or (not self.legal_issues and not self.social_alerts)
         
-        # Strictly between 0 and 1
+        # Strictly between 0 and 1 (Not 0.0 or 1.0)
         reward = max(0.01, min(reward, 0.99))
 
         return self.get_state(), reward, done, {}
