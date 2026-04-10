@@ -5,7 +5,7 @@ class DharmaEnv:
     def __init__(self):
         self.reset()
 
-    def reset(self, task_id=None):  # ✅ task_id add kiya
+    def reset(self, task_id=None):
         self.task_id = task_id
         self.subscriptions = {"Slack": 15.0, "Adobe": 50.0, "Zoom": 20.0}
         self.legal_issues = ["GDPR Section A missing"]
@@ -34,6 +34,12 @@ class DharmaEnv:
         elif action.category == "SOCIAL" and self.social_alerts:
             self.social_alerts.pop()
             reward += 0.2
+        else:
+            reward = 0.05  # ✅ Koi match nahi toh bhi 0.0 nahi
 
         done = self.steps >= 5 or (not self.legal_issues and not self.social_alerts)
+
+        # ✅ Score strictly (0.0, 1.0) ke beech — 0.0 aur 1.0 allowed nahi
+        reward = max(0.01, min(reward, 0.99))
+
         return self.get_state(), reward, done, {}
